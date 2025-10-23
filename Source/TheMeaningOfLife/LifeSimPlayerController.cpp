@@ -3,11 +3,41 @@
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/TextBlock.h"
+#include "Components/ScrollBox.h"
 #include "Selectable.h"
 
 ALifeSimPlayerController::ALifeSimPlayerController()
 {
     PrimaryActorTick.bCanEverTick = true;
+
+    // Load widget classes
+    static ConstructorHelpers::FClassFinder<UUserWidget> SelectionWidget(TEXT("/Game/UI/WBP_SelectionInfo"));
+    if (SelectionWidget.Succeeded())
+    {
+        SelectionInfoWidgetClass = SelectionWidget.Class;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("WBP_SelectionInfo not found"));
+    }
+
+    static ConstructorHelpers::FClassFinder<UUserWidget> InfoRow(TEXT("/Game/UI/WBP_InfoRow"));
+    if (InfoRow.Succeeded())
+    {
+        InfoRowWidgetClass = InfoRow.Class;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("WBP_InfoRow not found"));
+    }
+
+    // Selection
+    CurrentSelectedActor = nullptr;
+    SelectionInfoWidget = nullptr;
+    SelectionNameText = nullptr;
+    SelectionInfoScrollBox = nullptr;
 
     // Camera defaults
     CameraMoveSpeed = 2000.0f;
@@ -40,7 +70,6 @@ ALifeSimPlayerController::ALifeSimPlayerController()
     CurrentCameraAngle = DefaultCameraAngle;
     bIsMouseCameraControlActive = false;
     LastMousePosition = FVector2D::ZeroVector;
-    CurrentSelectedActor = nullptr;
 }
 
 void ALifeSimPlayerController::BeginPlay()
@@ -52,6 +81,7 @@ void ALifeSimPlayerController::BeginPlay()
     bEnableMouseOverEvents = true;
 
     UpdateSimulationSpeed();
+    CreateSelectionUI();
 
     UE_LOG(LogTemp, Warning, TEXT("Player Controller initialized"));
 }
@@ -283,7 +313,58 @@ void ALifeSimPlayerController::UpdateSimulationSpeed()
 
 void ALifeSimPlayerController::HandleLeftClick()
 {
-    //TODO
+    if (bIsMouseCameraControlActive)
+        return;
+
+    FHitResult HitResult;
+    FCollisionQueryParams QueryParams;
+    QueryParams.bTraceComplex = false;
+
+    bool bHit = GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_Visibility), true, HitResult);
+
+    AActor* HitActor = bHit ? HitResult.GetActor() : nullptr;
+    ISelectable* SelectableActor = nullptr;
+
+    if (HitActor)
+    {
+        SelectableActor = Cast<ISelectable>(HitActor);
+    }
+
+    if (SelectableActor)
+    {
+        // Deselect previous if different
+        if (CurrentSelectedActor && CurrentSelectedActor != HitActor)
+        {
+            ISelectable* PreviousSelectable = Cast<ISelectable>(CurrentSelectedActor);
+            if (PreviousSelectable)
+            {
+                PreviousSelectable->OnDeselected();
+            }
+        }
+
+        // Select new
+        CurrentSelectedActor = HitActor;
+        SelectableActor->OnSelected();
+
+        // Update UI
+        UpdateSelectionUI(HitActor);
+    }
+    else
+    {
+        // Deselect
+        if (CurrentSelectedActor)
+        {
+            ISelectable* PreviousSelectable = Cast<ISelectable>(CurrentSelectedActor);
+            if (PreviousSelectable)
+            {
+                PreviousSelectable->OnDeselected();
+            }
+            CurrentSelectedActor = nullptr;
+        }
+
+        // Hide UI
+        HideSelectionUI();
+    }
 }
 
 void ALifeSimPlayerController::UpdateCameraAngle(float CurrentHeight)
@@ -335,4 +416,94 @@ void ALifeSimPlayerController::ResetCamera()
     CurrentCameraAngle = DefaultCameraAngle;
 
     UE_LOG(LogTemp, Warning, TEXT("Camera reset to default position"));
+}
+
+void ALifeSimPlayerController::CreateSelectionUI()
+{
+    if (SelectionInfoWidgetClass)
+    {
+        SelectionInfoWidget = CreateWidget<UUserWidget>(this, SelectionInfoWidgetClass);
+
+        if (SelectionInfoWidget)
+        {
+            SelectionInfoWidget->AddToViewport();
+
+            // Get references to the UI elements
+            SelectionNameText = Cast<UTextBlock>(SelectionInfoWidget->GetWidgetFromName(TEXT("NameText")));
+            SelectionInfoScrollBox = Cast<UScrollBox>(SelectionInfoWidget->GetWidgetFromName(TEXT("InfoScrollBox")));
+
+            // Start hidden
+            SelectionInfoWidget->SetVisibility(ESlateVisibility::Hidden);
+
+            UE_LOG(LogTemp, Warning, TEXT("Selection UI created successfully"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("SelectionInfoWidgetClass not loaded!"));
+    }
+}
+
+void ALifeSimPlayerController::UpdateSelectionUI(AActor* SelectedActor)
+{
+    if (!SelectionInfoWidget || !SelectedActor)
+        return;
+
+    ISelectable* Selectable = Cast<ISelectable>(SelectedActor);
+    if (!Selectable)
+        return;
+
+    // Show the widget
+    SelectionInfoWidget->SetVisibility(ESlateVisibility::Visible);
+
+    // Update name
+    if (SelectionNameText)
+    {
+        SelectionNameText->SetText(FText::FromString(Selectable->GetDisplayName()));
+    }
+
+    // Clear and rebuild info list
+    if (SelectionInfoScrollBox)
+    {
+        SelectionInfoScrollBox->ClearChildren();
+
+        // Get info from the selected actor
+        TArray<TPair<FString, FString>> Info = Selectable->GetDisplayInfo();
+
+        // Use the InfoRowWidgetClass we loaded in constructor
+        if (InfoRowWidgetClass)
+        {
+            for (const TPair<FString, FString>& InfoPair : Info)
+            {
+                UUserWidget* RowWidget = CreateWidget<UUserWidget>(this, InfoRowWidgetClass);
+
+                if (RowWidget)
+                {
+                    // Set the text values
+                    UTextBlock* PropNameText = Cast<UTextBlock>(RowWidget->GetWidgetFromName(TEXT("PropertyNameText")));
+                    UTextBlock* PropValueText = Cast<UTextBlock>(RowWidget->GetWidgetFromName(TEXT("PropertyValueText")));
+
+                    if (PropNameText)
+                    {
+                        PropNameText->SetText(FText::FromString(InfoPair.Key + TEXT(":")));
+                    }
+
+                    if (PropValueText)
+                    {
+                        PropValueText->SetText(FText::FromString(InfoPair.Value));
+                    }
+
+                    SelectionInfoScrollBox->AddChild(RowWidget);
+                }
+            }
+        }
+    }
+}
+
+void ALifeSimPlayerController::HideSelectionUI()
+{
+    if (SelectionInfoWidget)
+    {
+        SelectionInfoWidget->SetVisibility(ESlateVisibility::Hidden);
+    }
 }

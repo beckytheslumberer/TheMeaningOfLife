@@ -72,6 +72,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation")
     float MaxSimulationSpeed;
 
+    UPROPERTY()
+    TSubclassOf<UUserWidget> SelectionInfoWidgetClass;
+
+    UPROPERTY()
+    TSubclassOf<UUserWidget> InfoRowWidgetClass;
+
+    UPROPERTY()
+    class UUserWidget* SelectionInfoWidget;
+
 private:
     // Camera movement
     void MoveCameraForward(float Value);
@@ -106,4 +115,13 @@ private:
     float CurrentCameraAngle;
     bool bIsMouseCameraControlActive;
     FVector2D LastMousePosition;
+
+    // UI references
+    class UTextBlock* SelectionNameText;
+    class UScrollBox* SelectionInfoScrollBox;
+
+    // Helper functions
+    void CreateSelectionUI();
+    void UpdateSelectionUI(AActor* SelectedActor);
+    void HideSelectionUI();
 };
