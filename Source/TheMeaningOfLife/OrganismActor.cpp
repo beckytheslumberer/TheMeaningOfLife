@@ -65,24 +65,24 @@ AOrganismActor::AOrganismActor()
 	}
 
 	// Core initializations
-	MaxEnergy = 240.0f;
-	Energy = 130.0f;
-	MetabolismRate = 1.0f; // Loses 1 energy per second
+	MaxEnergy = 100.0f;
+	Energy = 100.0f;
+	MetabolismRate = 0.1f; // Loses 0.1 energy per second
 	Age = 0.0f;
 	MovementSpeed = 100.0f;
-	DetectionRadius = 500.0f;
-	HungerThreshold = 120.0f;
+	DetectionRadius = 250.0f;
+	HungerThreshold = 40.0f;
 
 	// Reproduction initializations
-	ReproductionThreshold = 200.0f; // Need 200 energy to reproduce
-	ReproductionCost = 130.0f; // Costs 130 energy to make a baby
-	ReproductionCooldown = 60.0f; // Wait 1 minute
+	ReproductionThreshold = 100.0f; // Need 200 energy to reproduce
+	ReproductionCost = 60.0f; // Costs 130 energy to make a baby
+	ReproductionCooldown = 120.0f; // Wait 2 minutes
 	ReproductionSpawnOffset = 25.0f; // Spawn offset 25 cms
-	TimeSinceLastReproduction = 60.0f;
+	TimeSinceLastReproduction = ReproductionCooldown;
 
 	// Memory initialization - Add these
-	MaxFoodMemories = 5; // Remember up to 5 food locations
-	MemoryDecayTime = 120.0f; // Forget after 2 minutes
+	MaxFoodMemories = 3; // Remember up to 3 food locations
+	MemoryDecayTime = 300.0f; // Forget after 5 minutes
 
 	// Movement initialization
 	CurrentMovementDirection = FVector::ZeroVector;

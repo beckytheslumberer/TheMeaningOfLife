@@ -7,6 +7,7 @@
 #include "Components/TextBlock.h"
 #include "Components/ScrollBox.h"
 #include "Selectable.h"
+#include "ResourceComponent.h"
 
 ALifeSimPlayerController::ALifeSimPlayerController()
 {
