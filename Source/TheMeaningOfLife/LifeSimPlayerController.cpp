@@ -33,11 +33,23 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_InfoRow not found"));
     }
 
+    static ConstructorHelpers::FClassFinder<UUserWidget> SimulationSpeed(TEXT("/Game/UI/WBP_SimulationSpeed"));
+    if (SimulationSpeed.Succeeded())
+    {
+        SimulationSpeedWidgetClass = SimulationSpeed.Class;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("WBP_SimulationSpeed not found"));
+    }
+
     // Selection
     CurrentSelectedActor = nullptr;
     SelectionInfoWidget = nullptr;
     SelectionNameText = nullptr;
     SelectionInfoScrollBox = nullptr;
+    SimulationSpeedWidget = nullptr;
+    SimulationSpeedText = nullptr;
 
     // Camera defaults
     CameraMoveSpeed = 2000.0f;
@@ -59,8 +71,8 @@ ALifeSimPlayerController::ALifeSimPlayerController()
 
     // Simulation speed defaults
     CurrentSimulationSpeed = 1.0f;
-    MinSimulationSpeed = 0.1f;
-    MaxSimulationSpeed = 10.0f;
+    MinSimulationSpeed = 0.0625f;
+    MaxSimulationSpeed = 16.0f;
 
     // Initialize input
     CameraMoveInput = FVector2D::ZeroVector;
@@ -80,8 +92,10 @@ void ALifeSimPlayerController::BeginPlay()
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
 
-    UpdateSimulationSpeed();
+    CreateSimulationSpeedUI();
     CreateSelectionUI();
+
+    UpdateSimulationSpeed();
 
     UE_LOG(LogTemp, Warning, TEXT("Player Controller initialized"));
 }
@@ -309,6 +323,8 @@ void ALifeSimPlayerController::UpdateSimulationSpeed()
     {
         UGameplayStatics::SetGlobalTimeDilation(World, CurrentSimulationSpeed);
     }
+
+    UpdateSimulationSpeedUI();
 }
 
 void ALifeSimPlayerController::HandleLeftClick()
@@ -501,6 +517,54 @@ void ALifeSimPlayerController::UpdateSelectionUI(AActor* SelectedActor)
 }
 
 void ALifeSimPlayerController::HideSelectionUI()
+{
+    if (SelectionInfoWidget)
+    {
+        SelectionInfoWidget->SetVisibility(ESlateVisibility::Hidden);
+    }
+}
+
+void ALifeSimPlayerController::CreateSimulationSpeedUI()
+{
+    if (SimulationSpeedWidgetClass)
+    {
+        SimulationSpeedWidget = CreateWidget<UUserWidget>(this, SimulationSpeedWidgetClass);
+
+        if (SimulationSpeedWidget)
+        {
+            SimulationSpeedWidget->AddToViewport();
+
+            // Get references to the UI elements
+            SimulationSpeedText = Cast<UTextBlock>(SimulationSpeedWidget->GetWidgetFromName(TEXT("SimulationSpeedText")));
+
+            // Start hidden
+            SimulationSpeedWidget->SetVisibility(ESlateVisibility::Hidden);
+
+            UE_LOG(LogTemp, Warning, TEXT("Simulation Speed UI created successfully"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("SimulationSpeedWidgetClass not loaded!"));
+    }
+}
+
+void ALifeSimPlayerController::UpdateSimulationSpeedUI()
+{
+    if (!SimulationSpeedWidget) 
+        return;
+
+    // Show the widget
+    SimulationSpeedWidget->SetVisibility(ESlateVisibility::Visible);
+
+    // Update text
+    if (SimulationSpeedText)
+    {
+        SimulationSpeedText->SetText(FText::FromString("Simulation Speed: " + FString::SanitizeFloat(CurrentSimulationSpeed) + "x"));
+    }
+}
+
+void ALifeSimPlayerController::HideSimulationSpeedUI()
 {
     if (SelectionInfoWidget)
     {

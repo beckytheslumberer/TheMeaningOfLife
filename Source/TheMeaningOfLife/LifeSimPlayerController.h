@@ -79,7 +79,13 @@ public:
     TSubclassOf<UUserWidget> InfoRowWidgetClass;
 
     UPROPERTY()
+    TSubclassOf<UUserWidget> SimulationSpeedWidgetClass;
+
+    UPROPERTY()
     class UUserWidget* SelectionInfoWidget;
+
+    UPROPERTY()
+    class UUserWidget* SimulationSpeedWidget;
 
 private:
     // Camera movement
@@ -119,9 +125,13 @@ private:
     // UI references
     class UTextBlock* SelectionNameText;
     class UScrollBox* SelectionInfoScrollBox;
+    class UTextBlock* SimulationSpeedText;
 
     // Helper functions
     void CreateSelectionUI();
     void UpdateSelectionUI(AActor* SelectedActor);
     void HideSelectionUI();
+    void CreateSimulationSpeedUI();
+    void UpdateSimulationSpeedUI();
+    void HideSimulationSpeedUI();
 };
