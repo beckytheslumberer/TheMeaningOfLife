@@ -86,10 +86,16 @@ public:
     TSubclassOf<UUserWidget> SimulationSpeedWidgetClass;
 
     UPROPERTY()
+    TSubclassOf<UUserWidget> ResourceBarWidgetClass;
+
+    UPROPERTY()
     class UUserWidget* SelectionInfoWidget;
 
     UPROPERTY()
     class UUserWidget* SimulationSpeedWidget;
+
+    UPROPERTY()
+    class UUserWidget* ResourceBarWidget;
 
 private:
     // Camera movement
@@ -130,6 +136,11 @@ private:
     class UTextBlock* SelectionNameText;
     class UScrollBox* SelectionInfoScrollBox;
     class UTextBlock* SimulationSpeedText;
+    class UTextBlock* ResourceBarOrganismText;
+    class UTextBlock* ResourceBarPlantText;
+    class UTextBlock* ResourceBarLifeEssenceText;
+    class UProgressBar* ResourceBarEnergyBar;
+    class UProgressBar* ResourceBarWaterBar;
 
     // Helper functions
     void CreateSelectionUI();
@@ -138,4 +149,7 @@ private:
     void CreateSimulationSpeedUI();
     void UpdateSimulationSpeedUI();
     void HideSimulationSpeedUI();
+    void CreateResourceBarUI();
+    void UpdateResourceBarUI();
+    void HideResourceBarUI();
 };

@@ -14,7 +14,7 @@ UResourceComponent::UResourceComponent()
 	Water = 250.0f;
 	MaxWater = 1000.0f;
 	LifeEssence = 25;
-	MaxLifeEssence = 100;
+	MaxLifeEssence = 50;
 	OrganismCap = 32;
 	PlantCap = 16;
 
@@ -111,6 +111,31 @@ int32 UResourceComponent::GetOrganismCap()
 int32 UResourceComponent::GetPlantCap()
 {
 	return PlantCap;
+}
+
+float UResourceComponent::GetEnergyPercent()
+{
+	return Energy / MaxEnergy;
+}
+
+float UResourceComponent::GetWaterPercent()
+{
+	return Water / MaxWater;
+}
+
+FString UResourceComponent::OrganismInfoToString()
+{
+	return FString("Organisms: " + FString::FromInt(OrganismCount) + "/" + FString::FromInt(OrganismCap));
+}
+
+FString UResourceComponent::PlantInfoToString()
+{
+	return FString("Plants: " + FString::FromInt(PlantCount) + "/" + FString::FromInt(PlantCap));
+}
+
+FString UResourceComponent::LifeEssenceInfoToString()
+{
+	return FString("Life Essence: " + FString::FromInt(LifeEssence) + "/" + FString::FromInt(MaxLifeEssence));
 }
 
 bool UResourceComponent::CanSpawnOrganism()

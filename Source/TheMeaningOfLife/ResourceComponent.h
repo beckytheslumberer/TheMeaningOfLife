@@ -64,7 +64,12 @@ public:
 	bool RemovePlant();
 	float GetOrganismMetabolismRate();
 	int32 GetOrganismCount();
-	int32 GetPlantCount();
 	int32 GetOrganismCap();
+	int32 GetPlantCount();
 	int32 GetPlantCap();
+	FString OrganismInfoToString();
+	FString PlantInfoToString();
+	FString LifeEssenceInfoToString();
+	float GetEnergyPercent();
+	float GetWaterPercent();
 };

@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/ScrollBox.h"
+#include "Components/ProgressBar.h"
 #include "Selectable.h"
 #include "ResourceComponent.h"
 
@@ -47,6 +48,16 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_SimulationSpeed not found"));
     }
 
+    static ConstructorHelpers::FClassFinder<UUserWidget> ResourceBar(TEXT("/Game/UI/WBP_ResourceBar"));
+    if (ResourceBar.Succeeded())
+    {
+        ResourceBarWidgetClass = ResourceBar.Class;
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("WBP_ResourceBar not found"));
+    }
+
     // Selection
     CurrentSelectedActor = nullptr;
     SelectionInfoWidget = nullptr;
@@ -54,6 +65,12 @@ ALifeSimPlayerController::ALifeSimPlayerController()
     SelectionInfoScrollBox = nullptr;
     SimulationSpeedWidget = nullptr;
     SimulationSpeedText = nullptr;
+    ResourceBarWidget = nullptr;
+    ResourceBarOrganismText = nullptr;
+    ResourceBarPlantText = nullptr;
+    ResourceBarLifeEssenceText = nullptr;
+    ResourceBarEnergyBar = nullptr;
+    ResourceBarWaterBar = nullptr;
 
     // Camera defaults
     CameraMoveSpeed = 2000.0f;
@@ -98,6 +115,7 @@ void ALifeSimPlayerController::BeginPlay()
 
     CreateSimulationSpeedUI();
     CreateSelectionUI();
+    CreateResourceBarUI();
 
     UpdateSimulationSpeed();
 
@@ -139,6 +157,9 @@ void ALifeSimPlayerController::SetupInputComponent()
 void ALifeSimPlayerController::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+
+    // Update Resource UI
+    UpdateResourceBarUI();
 
     APawn* ControlledPawn = GetPawn();
     if (!ControlledPawn)
@@ -573,5 +594,75 @@ void ALifeSimPlayerController::HideSimulationSpeedUI()
     if (SelectionInfoWidget)
     {
         SelectionInfoWidget->SetVisibility(ESlateVisibility::Hidden);
+    }
+}
+
+void ALifeSimPlayerController::CreateResourceBarUI()
+{
+    if (ResourceBarWidgetClass)
+    {
+        ResourceBarWidget = CreateWidget<UUserWidget>(this, ResourceBarWidgetClass);
+
+        if (ResourceBarWidget)
+        {
+            ResourceBarWidget->AddToViewport();
+
+            // Get references to the UI elements
+            ResourceBarOrganismText = Cast<UTextBlock>(ResourceBarWidget->GetWidgetFromName(TEXT("OrganismTextBlock")));
+            ResourceBarPlantText = Cast<UTextBlock>(ResourceBarWidget->GetWidgetFromName(TEXT("PlantTextBlock")));
+            ResourceBarLifeEssenceText = Cast<UTextBlock>(ResourceBarWidget->GetWidgetFromName(TEXT("LifeEssenceTextBlock")));
+            ResourceBarEnergyBar = Cast<UProgressBar>(ResourceBarWidget->GetWidgetFromName(TEXT("ResourceEnergyBar")));
+            ResourceBarWaterBar = Cast<UProgressBar>(ResourceBarWidget->GetWidgetFromName(TEXT("ResourceWaterBar")));
+
+            // Start hidden
+            ResourceBarWidget->SetVisibility(ESlateVisibility::Hidden);
+
+            UE_LOG(LogTemp, Warning, TEXT("Resource Bar UI created successfully"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("ResourceBarWidgetClass not loaded!"));
+    }
+}
+
+void ALifeSimPlayerController::UpdateResourceBarUI()
+{
+    if (!ResourceBarWidget)
+        return;
+
+    // Show the widget
+    ResourceBarWidget->SetVisibility(ESlateVisibility::Visible);
+
+    // Update text
+    if (ResourceBarOrganismText)
+    {
+        ResourceBarOrganismText->SetText(FText::FromString(MyResourceComponent->OrganismInfoToString()));
+    }
+    if (ResourceBarPlantText)
+    {
+        ResourceBarPlantText->SetText(FText::FromString(MyResourceComponent->PlantInfoToString()));
+    }
+    if (ResourceBarLifeEssenceText)
+    {
+        ResourceBarLifeEssenceText->SetText(FText::FromString(MyResourceComponent->LifeEssenceInfoToString()));
+    }
+
+    // Update progress bars
+    if (ResourceBarEnergyBar)
+    {
+        ResourceBarEnergyBar->SetPercent(MyResourceComponent->GetEnergyPercent());
+    }
+    if (ResourceBarWaterBar)
+    {
+        ResourceBarWaterBar->SetPercent(MyResourceComponent->GetWaterPercent());
+    }
+}
+
+void ALifeSimPlayerController::HideResourceBarUI()
+{
+    if (ResourceBarWidget)
+    {
+        ResourceBarWidget->SetVisibility(ESlateVisibility::Hidden);
     }
 }
