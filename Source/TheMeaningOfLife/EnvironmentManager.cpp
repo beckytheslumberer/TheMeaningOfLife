@@ -16,11 +16,11 @@ AEnvironmentManager::AEnvironmentManager()
 	CellSize = 200.0f;
 
 	// Plant settings
-	InitialPlantCount = 10;
+	InitialPlantCount = 8;
 	PlantSpawnOffset = 50.0f;
 
 	// Organism settings
-	InitialOrganismCount = 30;
+	InitialOrganismCount = 16;
 	OrganismSpawnOffset = 50.0f;
 
 	// Visualization

@@ -1,16 +1,16 @@
 #include "ResourceComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "OrganismActor.h"
 
 // Sets default values for this component's properties
 UResourceComponent::UResourceComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
 	Energy = 250.0f;
 	MaxEnergy = 1000.0f;
+	PlayerMetabolismRate = 1.0f;
 	Water = 250.0f;
 	MaxWater = 1000.0f;
 	LifeEssence = 25;
@@ -18,7 +18,9 @@ UResourceComponent::UResourceComponent()
 	OrganismCap = 32;
 	PlantCap = 16;
 
-	PlayerMetabolismRate = 1.0f;
+	OrganismMetabolismRate = 0.5;
+	OrganismEnergyContribution = 0.2f;
+	OrganismCount = 0;
 }
 
 
@@ -26,6 +28,7 @@ UResourceComponent::UResourceComponent()
 void UResourceComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	
 	
 }
 
@@ -38,6 +41,9 @@ void UResourceComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	// Player metabolism - lose energy
 	Energy -= PlayerMetabolismRate * DeltaTime;
 	Energy = FMath::Max(Energy, 0.0f);
+
+	// Organism metabolism - gain energy
+	Energy += OrganismCount * OrganismEnergyContribution * OrganismMetabolismRate * DeltaTime;
 
 	// Check for death
 	if (Energy <= 0.0f)
@@ -87,7 +93,27 @@ bool UResourceComponent::SpendResources(float WaterCost, float EnergyCost, int32
 	return true;
 }
 
-bool UResourceComponent::CanSpawnOrganism(int32 OrganismCount)
+int32 UResourceComponent::GetOrganismCount()
+{
+	return OrganismCount;
+}
+
+int32 UResourceComponent::GetPlantCount()
+{
+	return PlantCount;
+}
+
+int32 UResourceComponent::GetOrganismCap()
+{
+	return OrganismCap;
+}
+
+int32 UResourceComponent::GetPlantCap()
+{
+	return PlantCap;
+}
+
+bool UResourceComponent::CanSpawnOrganism()
 {
 	// Check if we have room to spawn another organism
 	if (OrganismCount < OrganismCap)
@@ -99,7 +125,7 @@ bool UResourceComponent::CanSpawnOrganism(int32 OrganismCount)
 	return false;
 }
 
-bool UResourceComponent::CanSpawnPlant(int32 PlantCount)
+bool UResourceComponent::CanSpawnPlant()
 {
 	// Check if we have room to spawn another plant
 	if (PlantCount < PlantCap)
@@ -108,5 +134,54 @@ bool UResourceComponent::CanSpawnPlant(int32 PlantCount)
 	}
 
 	// Otherwise return false
+	return false;
+}
+
+float UResourceComponent::GetOrganismMetabolismRate()
+{
+	return OrganismMetabolismRate;
+}
+
+bool UResourceComponent::AddOrganism()
+{
+	if (OrganismCount < OrganismCap)
+	{
+		OrganismCount += 1;
+		return true;
+	}
+
+	return false;
+}
+
+bool UResourceComponent::RemoveOrganism()
+{
+	if (OrganismCount > 0)
+	{
+		OrganismCount -= 1;
+		return true;
+	}
+
+	return false;
+}
+
+bool UResourceComponent::AddPlant()
+{
+	if (PlantCount < PlantCap)
+	{
+		PlantCount += 1;
+		return true;
+	}
+
+	return false;
+}
+
+bool UResourceComponent::RemovePlant()
+{
+	if (PlantCount > 0)
+	{
+		PlantCount -= 1;
+		return true;
+	}
+
 	return false;
 }

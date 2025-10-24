@@ -3,6 +3,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "FoodActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "LifeSimPlayerController.h"
+#include "ResourceComponent.h"
 
 // Sets default values
 APlantActor::APlantActor()
@@ -54,6 +56,7 @@ void APlantActor::BeginPlay()
     Super::BeginPlay();
 
     // UE_LOG(LogTemp, Warning, TEXT("Plant spawned and ready to produce food"));
+    AddPlant();
 }
 
 // Called every frame
@@ -75,6 +78,44 @@ void APlantActor::Tick(float DeltaTime)
 
         TimeSinceLastSpawn = 0.0f;
     }
+}
+
+void APlantActor::AddPlant()
+{
+    // Add 1 Plant to the ResourceComponent's PlantCount
+    if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+    {
+        if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+        {
+            bool bPlantAdded = Resources->AddPlant();
+            if (!bPlantAdded)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Plant can't be added"));
+            }
+        }
+    }
+}
+
+void APlantActor::RemovePlant()
+{
+    // Remove 1 Plant from the ResourceComponent's PlantCount
+    if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+    {
+        if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+        {
+            bool bPlantRemoved = Resources->RemovePlant();
+            if (!bPlantRemoved)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Plant can't be removed"));
+            }
+        }
+    }
+}
+
+void APlantActor::Die()
+{
+    RemovePlant();
+    Destroy();
 }
 
 void APlantActor::SpawnFood()

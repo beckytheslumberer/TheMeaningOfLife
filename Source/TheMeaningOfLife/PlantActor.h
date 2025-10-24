@@ -59,6 +59,9 @@ public:
 private:
     void SpawnFood();
     int32 CountNearbyFood();
+    void AddPlant();
+    void RemovePlant();
+    void Die();
 
     float TimeSinceLastSpawn;
     TArray<AActor*> SpawnedFood;

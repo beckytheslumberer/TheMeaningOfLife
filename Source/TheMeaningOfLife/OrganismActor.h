@@ -123,6 +123,8 @@ private:
 	void TryReproduce();
 	void UpdateFoodMemories(float DeltaTime);
 	void RememberFoodLocation(FVector Location);
+	void AddOrganism();
+	void RemoveOrganism();
 	AActor* FindFoodFromMemory();
 
 	// Movement state

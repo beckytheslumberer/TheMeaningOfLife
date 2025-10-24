@@ -68,16 +68,16 @@ AOrganismActor::AOrganismActor()
 
 	// Core initializations
 	MaxEnergy = 100.0f;
-	Energy = 100.0f;
-	MetabolismRate = 0.1f; // Loses 0.1 energy per second
+	Energy = 50.0f;
+	MetabolismRate = 0.0f; // 0.0f for now. Set in beginplay
 	Age = 0.0f;
 	MovementSpeed = 100.0f;
 	DetectionRadius = 250.0f;
 	HungerThreshold = 40.0f;
 
 	// Reproduction initializations
-	ReproductionThreshold = 100.0f; // Need 200 energy to reproduce
-	ReproductionCost = 60.0f; // Costs 130 energy to make a baby
+	ReproductionThreshold = 90.0f; // Need 90 energy to reproduce
+	ReproductionCost = 50.0f; // Costs 50 energy to make a baby
 	ReproductionCooldown = 120.0f; // Wait 2 minutes
 	ReproductionSpawnOffset = 25.0f; // Spawn offset 25 cms
 	TimeSinceLastReproduction = ReproductionCooldown;
@@ -100,6 +100,16 @@ void AOrganismActor::BeginPlay()
 	Super::BeginPlay();
 	
 	// UE_LOG(LogTemp, Warning, TEXT("Organism spawned with %f energy"), Energy);
+	AddOrganism();
+
+	// Get Organism MetabolismRate
+	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+		{
+			MetabolismRate = Resources->GetOrganismMetabolismRate();
+		}
+	}
 }
 
 // Called every frame
@@ -111,21 +121,15 @@ void AOrganismActor::Tick(float DeltaTime)
 	float MetabolismAmount = MetabolismRate * DeltaTime;
 	Energy -= MetabolismAmount;
 
-	// Give portion of metabolism to the player
-	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
-	{
-		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
-		{
-			// Organisms give 100% of their metabolism as energy to player
-			float OfferingAmount = MetabolismAmount;
-			Resources->AddEnergy(OfferingAmount);
-		}
-	}
-
 	Age += DeltaTime;
 	TimeSinceLastReproduction += DeltaTime;
 
-	UpdateEnergyBar();
+	// If selected, update the EnergyBar
+	if (bIsSelected)
+	{
+		UpdateEnergyBar();
+	}
+
 	UpdateFoodMemories(DeltaTime);
 
 	// Check if organism dies
@@ -161,7 +165,40 @@ void AOrganismActor::Tick(float DeltaTime)
 void AOrganismActor::Die()
 {
 	// UE_LOG(LogTemp, Warning, TEXT("Organism died at age %f"), Age);
+	RemoveOrganism();
 	Destroy();
+}
+
+void AOrganismActor::AddOrganism()
+{
+	// Add 1 Organism to the ResourceComponent's OrganismCount
+	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+		{
+			bool bOrganismAdded = Resources->AddOrganism();
+			if (!bOrganismAdded)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Organism can't be added"));
+			}
+		}
+	}
+}
+
+void AOrganismActor::RemoveOrganism()
+{
+	// Remove 1 Organism from the ResourceComponent's OrganismCount
+	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+		{
+			bool bOrganismRemoved = Resources->RemoveOrganism();
+			if (!bOrganismRemoved)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Organism can't be removed"));
+			}
+		}
+	}
 }
 
 void AOrganismActor::MoveRandomly(float DeltaTime)
@@ -362,6 +399,19 @@ void AOrganismActor::TryReproduce()
 	if (Energy < ReproductionThreshold || TimeSinceLastReproduction < ReproductionCooldown)
 	{
 		return;
+	}
+
+	// Check if an organism can spawn
+	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+		{
+			bool bCanSpawnOrganism = Resources->CanSpawnOrganism();
+			if (!bCanSpawnOrganism)
+			{
+				return;
+			}
+		}
 	}
 
 	// Pay the energy cost
