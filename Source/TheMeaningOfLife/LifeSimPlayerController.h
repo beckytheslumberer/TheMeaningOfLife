@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "ResourceComponent.h"
 #include "LifeSimPlayerController.generated.h"
 
 UCLASS()
@@ -15,6 +16,9 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void SetupInputComponent() override;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UResourceComponent* MyResourceComponent; // Declare your component
 
 public:
     virtual void Tick(float DeltaTime) override;

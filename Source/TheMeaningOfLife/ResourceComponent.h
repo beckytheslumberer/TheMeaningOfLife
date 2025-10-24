@@ -18,7 +18,7 @@ public:
 	float Energy;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
-	int32 MetabolismRate;
+	float PlayerMetabolismRate; // Energy lost per second
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	float Water;
@@ -39,6 +39,9 @@ public:
 	int32 OrganismCap;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+	float OrganismEnergyContribution; // How much each organism gives per their metabolism
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	int32 PlantCap;
 
 protected:
@@ -48,6 +51,10 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	bool CanSpawnOrganism(float EnergyCost, int32 OrganismCount);
-	bool CanSpawnPlant(float WaterCost, int32 PlantCount);
+	void OnPlayerDeath();
+	void AddEnergy(float Amount);
+	void AddWater(float Amount);
+	bool SpendResources(float EnergyCost, float WaterCost, int32 LifeEssenceCost);
+	bool CanSpawnOrganism(int32 OrganismCount);
+	bool CanSpawnPlant(int32 PlantCount);
 };

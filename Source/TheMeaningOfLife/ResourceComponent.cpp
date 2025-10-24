@@ -1,4 +1,6 @@
 #include "ResourceComponent.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values for this component's properties
 UResourceComponent::UResourceComponent()
@@ -15,6 +17,8 @@ UResourceComponent::UResourceComponent()
 	MaxLifeEssence = 100;
 	OrganismCap = 32;
 	PlantCap = 16;
+
+	PlayerMetabolismRate = 1.0f;
 }
 
 
@@ -31,20 +35,78 @@ void UResourceComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	Energy -= MetabolismRate * DeltaTime;
+	// Player metabolism - lose energy
+	Energy -= PlayerMetabolismRate * DeltaTime;
+	Energy = FMath::Max(Energy, 0.0f);
+
+	// Check for death
+	if (Energy <= 0.0f)
+	{
+		OnPlayerDeath();
+	}
 }
 
-bool UResourceComponent::CanSpawnOrganism(float EnergyCost, int32 OrganismCount)
+void UResourceComponent::AddEnergy(float Amount)
 {
-	if ((EnergyCost >= Energy) || (LifeEssence < 1) || (OrganismCount >= OrganismCap))
+	Energy += Amount;
+	Energy = FMath::Min(Energy, MaxEnergy);
+}
+
+void UResourceComponent::AddWater(float Amount)
+{
+	Water += Amount;
+	Water = FMath::Min(Water, MaxWater);
+}
+
+void UResourceComponent::OnPlayerDeath()
+{
+	UE_LOG(LogTemp, Error, TEXT("PLAYER HAS DIED - GAME OVER"));
+
+	// Pause game
+	if (UWorld* World = GetWorld())
+	{
+		UGameplayStatics::SetGamePaused(World, true);
+	}
+
+	// TODO: Show death screen UI
+}
+
+bool UResourceComponent::SpendResources(float WaterCost, float EnergyCost, int32 LifeEssenceCost)
+{
+	// Check if we have enough
+	if (Energy < EnergyCost || Water < WaterCost || LifeEssence < LifeEssenceCost)
+	{
 		return false;
+	}
+
+	// Spend it
+	Energy -= EnergyCost;
+	Water -= WaterCost;
+	LifeEssence -= LifeEssenceCost;
+
 	return true;
 }
 
-bool UResourceComponent::CanSpawnPlant(float WaterCost, int32 PlantCount)
+bool UResourceComponent::CanSpawnOrganism(int32 OrganismCount)
 {
-	if ((WaterCost >= Water) || (LifeEssence < 1) || (PlantCount >= PlantCap))
-		return false;
+	// Check if we have room to spawn another organism
+	if (OrganismCount < OrganismCap)
+	{
+		return true;
+	}
 
-	return true;
+	// Otherwise return false
+	return false;
+}
+
+bool UResourceComponent::CanSpawnPlant(int32 PlantCount)
+{
+	// Check if we have room to spawn another plant
+	if (PlantCount < PlantCap)
+	{
+		return true;
+	}
+
+	// Otherwise return false
+	return false;
 }

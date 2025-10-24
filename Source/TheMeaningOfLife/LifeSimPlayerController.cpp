@@ -13,6 +13,9 @@ ALifeSimPlayerController::ALifeSimPlayerController()
 {
     PrimaryActorTick.bCanEverTick = true;
 
+    // Create resource component
+    MyResourceComponent = CreateDefaultSubobject<UResourceComponent>(TEXT("MyResourceComponent"));
+
     // Load widget classes
     static ConstructorHelpers::FClassFinder<UUserWidget> SelectionWidget(TEXT("/Game/UI/WBP_SelectionInfo"));
     if (SelectionWidget.Succeeded())

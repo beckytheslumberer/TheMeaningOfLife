@@ -8,6 +8,8 @@
 #include "FoodActor.h"
 #include "EnvironmentManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "LifeSimPlayerController.h"
+#include "ResourceComponent.h"
 
 AOrganismActor::AOrganismActor()
 {
@@ -105,11 +107,23 @@ void AOrganismActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Consume energy over time (metabolism)
+	float MetabolismAmount = MetabolismRate * DeltaTime;
+	Energy -= MetabolismAmount;
+
+	// Give portion of metabolism to the player
+	if (ALifeSimPlayerController* PC = Cast<ALifeSimPlayerController>(GetWorld()->GetFirstPlayerController()))
+	{
+		if (UResourceComponent* Resources = PC->FindComponentByClass<UResourceComponent>())
+		{
+			// Organisms give 100% of their metabolism as energy to player
+			float OfferingAmount = MetabolismAmount;
+			Resources->AddEnergy(OfferingAmount);
+		}
+	}
+
 	Age += DeltaTime;
 	TimeSinceLastReproduction += DeltaTime;
-
-	// Consume energy over time (metabolism)
-	Energy -= MetabolismRate * DeltaTime;
 
 	UpdateEnergyBar();
 	UpdateFoodMemories(DeltaTime);
