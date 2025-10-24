@@ -97,7 +97,46 @@ public:
     UPROPERTY()
     class UUserWidget* ResourceBarWidget;
 
+    // Spawn UI
+    UPROPERTY()
+    TSubclassOf<UUserWidget> SpawnButtonsWidgetClass;
+
+    UPROPERTY()
+    class UUserWidget* SpawnButtonsWidget;
+
+    // Spawn functions
+    UFUNCTION()
+    void EnterOrganismSpawnMode();
+    UFUNCTION()
+    void EnterPlantSpawnMode();
+    UFUNCTION()
+    void ExitSpawnMode();
+
+    // Spawn mode
+    UPROPERTY()
+    bool bIsInSpawnMode;
+
+    UPROPERTY()
+    TSubclassOf<AActor> PendingSpawnClass; // What we're about to spawn
+
+    enum class ESpawnType : uint8
+    {
+        None,
+        Organism,
+        Plant
+    };
+
+    ESpawnType CurrentSpawnType;
+
 private:
+    void HandleSpawnClick(const FVector& MySpawnLocation);
+    void CreateSpawnUI();
+    void SetupSpawnButtonCallbacks();
+    FVector GetMouseWorldPosition();
+
+    class UButton* SpawnOrganismButton;
+    class UButton* SpawnPlantButton;
+
     // Camera movement
     void MoveCameraForward(float Value);
     void MoveCameraRight(float Value);

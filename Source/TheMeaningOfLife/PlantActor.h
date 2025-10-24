@@ -56,6 +56,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
     float Age;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
+    float Water;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
+    float MaxWater;
+
 private:
     void SpawnFood();
     int32 CountNearbyFood();

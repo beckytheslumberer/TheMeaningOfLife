@@ -7,8 +7,13 @@
 #include "Components/TextBlock.h"
 #include "Components/ScrollBox.h"
 #include "Components/ProgressBar.h"
+#include "Components/Button.h"
 #include "Selectable.h"
 #include "ResourceComponent.h"
+#include "OrganismActor.h"
+#include "PlantActor.h"
+#include "FoodActor.h"
+#include "EnvironmentManager.h"
 
 ALifeSimPlayerController::ALifeSimPlayerController()
 {
@@ -18,6 +23,7 @@ ALifeSimPlayerController::ALifeSimPlayerController()
     MyResourceComponent = CreateDefaultSubobject<UResourceComponent>(TEXT("MyResourceComponent"));
 
     // Load widget classes
+    // Selection widget
     static ConstructorHelpers::FClassFinder<UUserWidget> SelectionWidget(TEXT("/Game/UI/WBP_SelectionInfo"));
     if (SelectionWidget.Succeeded())
     {
@@ -28,6 +34,7 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_SelectionInfo not found"));
     }
 
+    // Info row widget
     static ConstructorHelpers::FClassFinder<UUserWidget> InfoRow(TEXT("/Game/UI/WBP_InfoRow"));
     if (InfoRow.Succeeded())
     {
@@ -38,6 +45,7 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_InfoRow not found"));
     }
 
+    // Simulation speed widget
     static ConstructorHelpers::FClassFinder<UUserWidget> SimulationSpeed(TEXT("/Game/UI/WBP_SimulationSpeed"));
     if (SimulationSpeed.Succeeded())
     {
@@ -48,6 +56,7 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_SimulationSpeed not found"));
     }
 
+    // Resource bar widget
     static ConstructorHelpers::FClassFinder<UUserWidget> ResourceBar(TEXT("/Game/UI/WBP_ResourceBar"));
     if (ResourceBar.Succeeded())
     {
@@ -58,19 +67,35 @@ ALifeSimPlayerController::ALifeSimPlayerController()
         UE_LOG(LogTemp, Warning, TEXT("WBP_ResourceBar not found"));
     }
 
+    // Spawn buttons widget
+    static ConstructorHelpers::FClassFinder<UUserWidget> SpawnButtons(TEXT("/Game/UI/WBP_SpawnButtons"));
+    if (SpawnButtons.Succeeded())
+    {
+        SpawnButtonsWidgetClass = SpawnButtons.Class;
+    }
+
     // Selection
     CurrentSelectedActor = nullptr;
     SelectionInfoWidget = nullptr;
     SelectionNameText = nullptr;
     SelectionInfoScrollBox = nullptr;
+
+    // Simulation speed
     SimulationSpeedWidget = nullptr;
     SimulationSpeedText = nullptr;
+
+    // Resource bar
     ResourceBarWidget = nullptr;
     ResourceBarOrganismText = nullptr;
     ResourceBarPlantText = nullptr;
     ResourceBarLifeEssenceText = nullptr;
     ResourceBarEnergyBar = nullptr;
     ResourceBarWaterBar = nullptr;
+
+    // Spawn buttons
+    SpawnButtonsWidget = nullptr;
+    SpawnOrganismButton = nullptr;
+    SpawnPlantButton = nullptr;
 
     // Camera defaults
     CameraMoveSpeed = 2000.0f;
@@ -113,9 +138,11 @@ void ALifeSimPlayerController::BeginPlay()
     bEnableClickEvents = true;
     bEnableMouseOverEvents = true;
 
-    CreateSimulationSpeedUI();
+    // Initialize UI
     CreateSelectionUI();
+    CreateSimulationSpeedUI();
     CreateResourceBarUI();
+    CreateSpawnUI();
 
     UpdateSimulationSpeed();
 
@@ -150,8 +177,11 @@ void ALifeSimPlayerController::SetupInputComponent()
     InputComponent->BindAction("DecreaseSpeed", IE_Pressed, this, &ALifeSimPlayerController::DecreaseSimulationSpeed);
     InputComponent->BindAction("ResetSpeed", IE_Pressed, this, &ALifeSimPlayerController::ResetSimulationSpeed);
 
-    // Selection
+    // Left click - now handles both selection AND spawn mode
     InputComponent->BindAction("LeftClick", IE_Pressed, this, &ALifeSimPlayerController::HandleLeftClick);
+
+    // Right click to cancel spawn mode
+    InputComponent->BindAction("RightClick", IE_Pressed, this, &ALifeSimPlayerController::ExitSpawnMode);
 }
 
 void ALifeSimPlayerController::Tick(float DeltaTime)
@@ -221,6 +251,206 @@ void ALifeSimPlayerController::Tick(float DeltaTime)
     CameraZoomInput = 0.0f;
     CameraRotateInput = 0.0f;
     CameraAngleInput = 0.0f;
+}
+
+
+void ALifeSimPlayerController::CreateSpawnUI()
+{
+    if (SpawnButtonsWidgetClass)
+    {
+        SpawnButtonsWidget = CreateWidget<UUserWidget>(this, SpawnButtonsWidgetClass);
+
+        if (SpawnButtonsWidget)
+        {
+            SpawnButtonsWidget->AddToViewport();
+
+            // Get button references
+            SpawnOrganismButton = Cast<UButton>(SpawnButtonsWidget->GetWidgetFromName(TEXT("SpawnOrganismButton")));
+            SpawnPlantButton = Cast<UButton>(SpawnButtonsWidget->GetWidgetFromName(TEXT("SpawnPlantButton")));
+
+            SetupSpawnButtonCallbacks();
+
+            UE_LOG(LogTemp, Warning, TEXT("Spawn UI created successfully"));
+        }
+    }
+}
+
+void ALifeSimPlayerController::SetupSpawnButtonCallbacks()
+{
+    if (SpawnOrganismButton)
+    {
+        SpawnOrganismButton->OnClicked.AddDynamic(this, &ALifeSimPlayerController::EnterOrganismSpawnMode);
+    }
+
+    if (SpawnPlantButton)
+    {
+        SpawnPlantButton->OnClicked.AddDynamic(this, &ALifeSimPlayerController::EnterPlantSpawnMode);
+    }
+}
+
+void ALifeSimPlayerController::EnterOrganismSpawnMode()
+{
+    if (!MyResourceComponent)
+        return;
+
+    // Check if we can spawn it
+    if (!MyResourceComponent->CanSpawnOrganism())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough resources to spawn organism!"));
+        return;
+    }
+
+    // Find environment manager
+    TArray<AActor*> FoundActors;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnvironmentManager::StaticClass(), FoundActors);
+
+    if (FoundActors.Num() > 0)
+    {
+        AEnvironmentManager* EnvManager = Cast<AEnvironmentManager>(FoundActors[0]);
+        if (EnvManager && EnvManager->OrganismActorClass)
+        {
+            bIsInSpawnMode = true;
+            CurrentSpawnType = ESpawnType::Organism;
+            PendingSpawnClass = EnvManager->OrganismActorClass;
+
+            UE_LOG(LogTemp, Warning, TEXT("Entered Organism spawn mode - click to place"));
+        }
+    }
+}
+
+void ALifeSimPlayerController::EnterPlantSpawnMode()
+{
+    if (!MyResourceComponent)
+        return;
+
+    // Check if we can spawn it
+    if (!MyResourceComponent->CanSpawnPlant())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough resources to spawn plant!"));
+        return;
+    }
+
+    // Find environment manager
+    TArray<AActor*> FoundActors;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnvironmentManager::StaticClass(), FoundActors);
+
+    if (FoundActors.Num() > 0)
+    {
+        AEnvironmentManager* EnvManager = Cast<AEnvironmentManager>(FoundActors[0]);
+        if (EnvManager && EnvManager->PlantActorClass)
+        {
+            bIsInSpawnMode = true;
+            CurrentSpawnType = ESpawnType::Plant;
+            PendingSpawnClass = EnvManager->PlantActorClass;
+
+            UE_LOG(LogTemp, Warning, TEXT("Entered Plant spawn mode - click to place"));
+        }
+    }
+}
+
+void ALifeSimPlayerController::ExitSpawnMode()
+{
+    if (bIsInSpawnMode)
+    {
+        bIsInSpawnMode = false;
+        CurrentSpawnType = ESpawnType::None;
+        PendingSpawnClass = nullptr;
+
+        UE_LOG(LogTemp, Warning, TEXT("Exited spawn mode"));
+    }
+}
+
+void ALifeSimPlayerController::HandleSpawnClick(const FVector& MySpawnLocation)
+{
+    UResourceComponent* Resources = FindComponentByClass<UResourceComponent>();
+    if (!Resources || !PendingSpawnClass)
+    {
+        ExitSpawnMode();
+        return;
+    }
+
+    FActorSpawnParameters SpawnParams;
+
+    if (CurrentSpawnType == ESpawnType::Organism)
+    {
+        // Double-check can spawn
+        if (!MyResourceComponent->CanSpawnOrganism())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Can't spawn organism - insufficient resources or at cap"));
+            ExitSpawnMode();
+            return;
+        }
+
+        // Spawn organism
+        AOrganismActor* NewOrganism = GetWorld()->SpawnActor<AOrganismActor>(
+            PendingSpawnClass,
+            MySpawnLocation,
+            FRotator::ZeroRotator,
+            SpawnParams
+        );
+
+        if (NewOrganism)
+        {
+            NewOrganism->Energy = 50.0f;
+            MyResourceComponent->SpendResources(50.0f, 0.0f, 1);
+
+            UE_LOG(LogTemp, Warning, TEXT("Spawned organism at clicked location"));
+        }
+    }
+    else if (CurrentSpawnType == ESpawnType::Plant)
+    {
+        // Double-check resources
+        if (!MyResourceComponent->CanSpawnPlant())
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Can't spawn plant - insufficient resources or at cap"));
+            ExitSpawnMode();
+            return;
+        }
+
+        // Spawn plant
+        APlantActor* NewPlant = GetWorld()->SpawnActor<APlantActor>(
+            PendingSpawnClass,
+            MySpawnLocation,
+            FRotator::ZeroRotator,
+            SpawnParams
+        );
+
+        if (NewPlant)
+        {
+            // Give plant reference to food class
+            TArray<AActor*> FoundActors;
+            UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnvironmentManager::StaticClass(), FoundActors);
+            if (FoundActors.Num() > 0)
+            {
+                AEnvironmentManager* EnvManager = Cast<AEnvironmentManager>(FoundActors[0]);
+                if (EnvManager && EnvManager->FoodActorClass)
+                {
+                    NewPlant->FoodActorClass = EnvManager->FoodActorClass;
+                }
+            }
+
+            Resources->SpendResources(0.0f, 50.0f, 1);
+
+            UE_LOG(LogTemp, Warning, TEXT("Spawned plant at clicked location"));
+        }
+    }
+
+    // Exit spawn mode after placing
+    ExitSpawnMode(); // Comment this out if you want to stay in spawn mode for multiple placements
+}
+
+FVector ALifeSimPlayerController::GetMouseWorldPosition()
+{
+    FHitResult HitResult;
+    GetHitResultUnderCursor(ECC_Visibility, false, HitResult);
+
+    if (HitResult.bBlockingHit)
+    {
+        return HitResult.Location;
+    }
+
+    // Default to center of world if no hit
+    return FVector(0, 0, 50);
 }
 
 void ALifeSimPlayerController::MoveCameraForward(float Value)
@@ -354,9 +584,18 @@ void ALifeSimPlayerController::UpdateSimulationSpeed()
 
 void ALifeSimPlayerController::HandleLeftClick()
 {
+    // If in spawn mode, handle spawn instead of selection
+    if (bIsInSpawnMode)
+    {
+        FVector MySpawnLocation = GetMouseWorldPosition();
+        HandleSpawnClick(MySpawnLocation);
+        return; // don't do selection when in spawn mode
+    }
+
     if (bIsMouseCameraControlActive)
         return;
 
+    // selection
     FHitResult HitResult;
     FCollisionQueryParams QueryParams;
     QueryParams.bTraceComplex = false;

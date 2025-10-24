@@ -45,6 +45,8 @@ APlantActor::APlantActor()
     MaxFoodNearby = 3; // Keep up to 3 food nearby
     FoodSpawnRadius = 150.0f; // Spawn within 150 units
     FoodCheckRadius = 200.0f; // Check for food within 200 units
+    Water = 50.0f;
+    MaxWater = 100.0f;
 
     Age = 0.0f;
     TimeSinceLastSpawn = 0.0f;
