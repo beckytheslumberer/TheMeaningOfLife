@@ -18,7 +18,7 @@ UResourceComponent::UResourceComponent()
 	OrganismCap = 32;
 	PlantCap = 16;
 
-	OrganismMetabolismRate = 0.5;
+	OrganismMetabolismRate = 0.5f;
 	OrganismEnergyContribution = 0.2f;
 	OrganismCount = 0;
 }
@@ -77,7 +77,7 @@ void UResourceComponent::OnPlayerDeath()
 	// TODO: Show death screen UI
 }
 
-bool UResourceComponent::SpendResources(float WaterCost, float EnergyCost, int32 LifeEssenceCost)
+bool UResourceComponent::SpendResources(float EnergyCost, float WaterCost, int32 LifeEssenceCost)
 {
 	// Check if we have enough
 	if (Energy < EnergyCost || Water < WaterCost || LifeEssence < LifeEssenceCost)

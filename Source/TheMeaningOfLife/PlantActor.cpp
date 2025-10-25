@@ -9,11 +9,7 @@
 // Sets default values
 APlantActor::APlantActor()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-    PlantName = TEXT(""); // Empty for now
-    bIsSelected = false;
 
 	// Create mesh component
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
@@ -40,16 +36,23 @@ APlantActor::APlantActor()
         }
     }
 
+    // Water system
+    MaxWater = 100.0f;
+    Water = 50.0f; // Start at half
+    WaterConsumptionRate = 1.0f; // 1 water per second
+    LowWaterThreshold = 30.0f; // Below 30% = struggling
+
     // Production defaults
     FoodSpawnInterval = 15.0f; // Spawn food every 15 seconds
     MaxFoodNearby = 3; // Keep up to 3 food nearby
     FoodSpawnRadius = 150.0f; // Spawn within 150 units
     FoodCheckRadius = 200.0f; // Check for food within 200 units
-    Water = 50.0f;
-    MaxWater = 100.0f;
 
     Age = 0.0f;
     TimeSinceLastSpawn = 0.0f;
+
+    PlantName = TEXT(""); // Empty for now
+    bIsSelected = false;
 }
 
 // Called when the game starts or when spawned
@@ -69,6 +72,30 @@ void APlantActor::Tick(float DeltaTime)
     Age += DeltaTime;
     TimeSinceLastSpawn += DeltaTime;
 
+    // Consume water over time
+    Water -= WaterConsumptionRate * DeltaTime;
+    Water = FMath::Max(Water, 0.0f);
+
+    // Die if no water
+    if (Water <= 0.0f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Plant died from lack of water"));
+        Die();
+        return;
+    }
+
+    // Adjust food production rate based on water level
+    if (Water < LowWaterThreshold)
+    {
+        FoodSpawnInterval = FoodSpawnIntervalDry; // Struggling, slow production
+        UpdatePlantColor(true); // Visual feedback: brownish
+    }
+    else
+    {
+        FoodSpawnInterval = FoodSpawnIntervalWellWatered; // Healthy, fast production
+        UpdatePlantColor(false); // Visual feedback: green
+    }
+
     // Try to spawn food if enough time has passed
     if (TimeSinceLastSpawn >= FoodSpawnInterval)
     {
@@ -80,6 +107,38 @@ void APlantActor::Tick(float DeltaTime)
 
         TimeSinceLastSpawn = 0.0f;
     }
+}
+
+void APlantActor::UpdatePlantColor(bool bIsLowWater)
+{
+    if (MeshComponent && !bIsSelected)
+    {
+        UMaterialInstanceDynamic* DynMat = Cast<UMaterialInstanceDynamic>(MeshComponent->GetMaterial(0));
+        if (DynMat)
+        {
+            if (bIsLowWater)
+            {
+                // Brownish/dying color
+                float WaterPercent = Water / MaxWater;
+                DynMat->SetVectorParameterValue(FName("Color"),
+                    FLinearColor(0.4f, 0.3f + (WaterPercent * 0.4f), 0.1f, 1.0f));
+            }
+            else
+            {
+                // Healthy green
+                DynMat->SetVectorParameterValue(FName("Color"),
+                    FLinearColor(0.2f, 0.7f, 0.2f, 1.0f));
+            }
+        }
+    }
+}
+
+void APlantActor::AddWater(float Amount)
+{
+    Water += Amount;
+    Water = FMath::Min(Water, MaxWater);
+
+    UE_LOG(LogTemp, Log, TEXT("Plant watered! Water now: %.1f"), Water);
 }
 
 void APlantActor::AddPlant()
@@ -219,6 +278,7 @@ TArray<TPair<FString, FString>> APlantActor::GetDisplayInfo()
     TArray<TPair<FString, FString>> Info;
 
     Info.Add(TPair<FString, FString>(TEXT("Age"), FString::Printf(TEXT("%.1f seconds"), Age)));
+    Info.Add(TPair<FString, FString>(TEXT("Water"), FString::Printf(TEXT("%.1f / %.1f"), Water, MaxWater)));
     Info.Add(TPair<FString, FString>(TEXT("Food Spawn Interval"), FString::Printf(TEXT("%.1fs"), FoodSpawnInterval)));
     Info.Add(TPair<FString, FString>(TEXT("Max Food Nearby"), FString::Printf(TEXT("%d"), MaxFoodNearby)));
     Info.Add(TPair<FString, FString>(TEXT("Current Nearby Food"), FString::Printf(TEXT("%d"), CountNearbyFood())));

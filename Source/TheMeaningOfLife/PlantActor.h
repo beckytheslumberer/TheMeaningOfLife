@@ -56,15 +56,31 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
     float Age;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
     float Water;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
     float MaxWater;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
+    float WaterConsumptionRate; // Water used per second
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
+    float LowWaterThreshold; // Below this = slower food production
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
+    float FoodSpawnIntervalWellWatered; // Fast food production when water > threshold
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plant|Water")
+    float FoodSpawnIntervalDry; // Slow food production when water < threshold
+
+    UFUNCTION()
+    void AddWater(float Amount);
 
 private:
     void SpawnFood();
     int32 CountNearbyFood();
+    void UpdatePlantColor(bool bIsLowWater);
     void AddPlant();
     void RemovePlant();
     void Die();

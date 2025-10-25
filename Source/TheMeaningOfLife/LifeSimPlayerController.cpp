@@ -434,9 +434,6 @@ void ALifeSimPlayerController::HandleSpawnClick(const FVector& MySpawnLocation)
             UE_LOG(LogTemp, Warning, TEXT("Spawned plant at clicked location"));
         }
     }
-
-    // Exit spawn mode after placing
-    ExitSpawnMode(); // Comment this out if you want to stay in spawn mode for multiple placements
 }
 
 FVector ALifeSimPlayerController::GetMouseWorldPosition()
