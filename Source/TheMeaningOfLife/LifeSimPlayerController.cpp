@@ -22,6 +22,17 @@ ALifeSimPlayerController::ALifeSimPlayerController()
     // Create resource component
     MyResourceComponent = CreateDefaultSubobject<UResourceComponent>(TEXT("MyResourceComponent"));
 
+    // Initialize Spawn variables
+    bIsInSpawnMode = false;
+    PendingSpawnClass = nullptr;
+    CurrentSpawnType = ESpawnType::None;
+
+    // Rain settings
+    bIsInRainMode = false;
+    RainWaterCost = 50.0f; // Costs 50 water to make it rain
+    RainRadius = 500.0f; // Affects plants within 500 units
+    RainWaterAmount = 30.0f; // Gives each plant 30 water
+
     // Load widget classes
     // Selection widget
     static ConstructorHelpers::FClassFinder<UUserWidget> SelectionWidget(TEXT("/Game/UI/WBP_SelectionInfo"));
@@ -96,6 +107,9 @@ ALifeSimPlayerController::ALifeSimPlayerController()
     SpawnButtonsWidget = nullptr;
     SpawnOrganismButton = nullptr;
     SpawnPlantButton = nullptr;
+
+    // Rain button
+    RainButton = nullptr;
 
     // Camera defaults
     CameraMoveSpeed = 2000.0f;
@@ -267,6 +281,7 @@ void ALifeSimPlayerController::CreateSpawnUI()
             // Get button references
             SpawnOrganismButton = Cast<UButton>(SpawnButtonsWidget->GetWidgetFromName(TEXT("SpawnOrganismButton")));
             SpawnPlantButton = Cast<UButton>(SpawnButtonsWidget->GetWidgetFromName(TEXT("SpawnPlantButton")));
+            RainButton = Cast<UButton>(SpawnButtonsWidget->GetWidgetFromName(TEXT("RainButton")));
 
             SetupSpawnButtonCallbacks();
 
@@ -285,6 +300,11 @@ void ALifeSimPlayerController::SetupSpawnButtonCallbacks()
     if (SpawnPlantButton)
     {
         SpawnPlantButton->OnClicked.AddDynamic(this, &ALifeSimPlayerController::EnterPlantSpawnMode);
+    }
+
+    if (RainButton)
+    {
+        RainButton->OnClicked.AddDynamic(this, &ALifeSimPlayerController::EnterRainMode);
     }
 }
 
@@ -348,6 +368,69 @@ void ALifeSimPlayerController::EnterPlantSpawnMode()
     }
 }
 
+void ALifeSimPlayerController::EnterRainMode()
+{
+    if (!MyResourceComponent)
+        return;
+
+    // Check if we can afford it
+    if (MyResourceComponent->Water < RainWaterCost)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough water to make it rain!"));
+        return;
+    }
+
+    bIsInRainMode = true;
+    UE_LOG(LogTemp, Warning, TEXT("Entered Rain mode - click where you want it to rain"));
+}
+
+void ALifeSimPlayerController::HandleRainClick(const FVector& RainLocation)
+{
+    if (!MyResourceComponent)
+    {
+        ExitRainMode();
+        return;
+    }
+
+    // Check resources again
+    if (MyResourceComponent->Water < RainWaterCost)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Not enough water!"));
+        ExitRainMode();
+        return;
+    }
+
+    // Spend the water
+    MyResourceComponent->Water -= RainWaterCost;
+
+    // Find all plants within radius and water them
+    TArray<AActor*> AllPlants;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlantActor::StaticClass(), AllPlants);
+
+    int32 PlantsWatered = 0;
+    for (AActor* Actor : AllPlants)
+    {
+        float Distance = FVector::Dist(RainLocation, Actor->GetActorLocation());
+        if (Distance <= RainRadius)
+        {
+            APlantActor* Plant = Cast<APlantActor>(Actor);
+            if (Plant)
+            {
+                Plant->AddWater(RainWaterAmount);
+                PlantsWatered++;
+            }
+        }
+    }
+
+    // Draw debug sphere to show rain area
+    DrawDebugSphere(GetWorld(), RainLocation, RainRadius, 32, FColor::Blue, false, 2.0f, 0, 5.0f);
+
+    UE_LOG(LogTemp, Warning, TEXT("Made it rain! Watered %d plants"), PlantsWatered);
+
+    // Exit rain mode after use
+    ExitRainMode();
+}
+
 void ALifeSimPlayerController::ExitSpawnMode()
 {
     if (bIsInSpawnMode)
@@ -357,6 +440,15 @@ void ALifeSimPlayerController::ExitSpawnMode()
         PendingSpawnClass = nullptr;
 
         UE_LOG(LogTemp, Warning, TEXT("Exited spawn mode"));
+    }
+}
+
+void ALifeSimPlayerController::ExitRainMode()
+{
+    if (bIsInRainMode)
+    {
+        bIsInRainMode = false;
+        UE_LOG(LogTemp, Warning, TEXT("Exited rain mode"));
     }
 }
 
@@ -581,6 +673,14 @@ void ALifeSimPlayerController::UpdateSimulationSpeed()
 
 void ALifeSimPlayerController::HandleLeftClick()
 {
+    // If in rain mode, handle rain instead
+    if (bIsInRainMode)
+    {
+        FVector RainLocation = GetMouseWorldPosition();
+        HandleRainClick(RainLocation);
+        return;
+    }
+
     // If in spawn mode, handle spawn instead of selection
     if (bIsInSpawnMode)
     {

@@ -38,6 +38,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
 	float OrganismEnergyContribution; // How much each organism gives per their metabolism
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resource")
+	float PlantWaterContribution; // How much each plant gives per their consumption
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -48,6 +51,7 @@ private:
 	float OrganismMetabolismRate;
 	int32 PlantCount;
 	int32 PlantCap;
+	float PlantConsumptionRate;
 
 public:	
 	// Called every frame

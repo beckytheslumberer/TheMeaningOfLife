@@ -21,6 +21,10 @@ UResourceComponent::UResourceComponent()
 	OrganismMetabolismRate = 0.5f;
 	OrganismEnergyContribution = 0.2f;
 	OrganismCount = 0;
+
+	PlantConsumptionRate = 0.5f;
+	PlantWaterContribution = 0.2f;
+	PlantCount = 0;
 }
 
 
@@ -43,7 +47,10 @@ void UResourceComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAc
 	Energy = FMath::Max(Energy, 0.0f);
 
 	// Organism metabolism - gain energy
-	Energy += OrganismCount * OrganismEnergyContribution * OrganismMetabolismRate * DeltaTime;
+	AddEnergy(OrganismCount * OrganismEnergyContribution * OrganismMetabolismRate * DeltaTime);
+
+	// Plant consumption - gain water
+	AddWater(PlantCount * PlantWaterContribution * PlantConsumptionRate * DeltaTime);
 
 	// Check for death
 	if (Energy <= 0.0f)

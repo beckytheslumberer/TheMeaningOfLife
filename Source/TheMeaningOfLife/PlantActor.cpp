@@ -40,7 +40,7 @@ APlantActor::APlantActor()
     MaxWater = 100.0f;
     Water = 50.0f; // Start at half
     WaterConsumptionRate = 1.0f; // 1 water per second
-    LowWaterThreshold = 30.0f; // Below 30% = struggling
+    LowWaterThreshold = 25.0; // Below 25% = struggling
 
     // Production defaults
     FoodSpawnInterval = 15.0f; // Spawn food every 15 seconds
@@ -96,8 +96,8 @@ void APlantActor::Tick(float DeltaTime)
         UpdatePlantColor(false); // Visual feedback: green
     }
 
-    // Try to spawn food if enough time has passed
-    if (TimeSinceLastSpawn >= FoodSpawnInterval)
+    // Try to spawn food if enough time has passed AND plant has been alive long enough
+    if (TimeSinceLastSpawn >= FoodSpawnInterval && Age >= FoodSpawnInterval)
     {
         // Only spawn if we don't have too much food nearby
         if (CountNearbyFood() < MaxFoodNearby)

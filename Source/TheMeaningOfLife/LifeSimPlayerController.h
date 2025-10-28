@@ -111,6 +111,10 @@ public:
     void EnterPlantSpawnMode();
     UFUNCTION()
     void ExitSpawnMode();
+    UFUNCTION()
+    void EnterRainMode();
+    UFUNCTION()
+    void ExitRainMode();
 
     // Spawn mode
     UPROPERTY()
@@ -128,7 +132,22 @@ public:
 
     ESpawnType CurrentSpawnType;
 
+    // Rain mode
+    UPROPERTY()
+    bool bIsInRainMode;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rain")
+    float RainWaterCost; // Water cost per rain action
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rain")
+    float RainRadius; // How far the rain reaches
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rain")
+    float RainWaterAmount; // How much water each plant gets
+
 private:
+    void HandleRainClick(const FVector& RainLocation);
+
     void HandleSpawnClick(const FVector& MySpawnLocation);
     void CreateSpawnUI();
     void SetupSpawnButtonCallbacks();
@@ -136,6 +155,7 @@ private:
 
     class UButton* SpawnOrganismButton;
     class UButton* SpawnPlantButton;
+    class UButton* RainButton;
 
     // Camera movement
     void MoveCameraForward(float Value);
